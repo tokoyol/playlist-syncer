@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Connect YouTube Music{% endblock %}
+
+{% block content %}
+<div class="max-w-md mx-auto mt-12 text-center">
+  <h1 class="text-2xl font-bold mb-4">Connect YouTube Music</h1>
+  <p class="text-gray-400 mb-6">
+    To link your YouTube Music account, open the URL below on any device
+    and enter the code shown.
+  </p>
+
+  <div class="rounded-2xl border border-surface2 bg-surface p-6 space-y-4">
+    <p class="text-sm text-gray-400">Go to:</p>
+    <a href="{{ verification_url }}" target="_blank" rel="noopener"
+       class="block text-youtube text-lg font-mono font-bold hover:underline">
+      {{ verification_url }}
+    </a>
+
+    <p class="text-sm text-gray-400">Enter this code:</p>
+    <p class="text-3xl font-mono font-bold tracking-widest text-white select-all">
+      {{ user_code }}
+    </p>
+  </div>
+
+  <p class="mt-6 text-gray-500 text-sm" id="poll-status">
+    Waiting for you to authorize&hellip;
+  </p>
+
+  <form method="POST" action="/login/youtube/poll" id="poll-form">
+    <input type="hidden" name="device_code" value="{{ device_code }}" />
+    <input type="hidden" name="interval" value="{{ interval }}" />
+  </form>
+</div>
+
+<script>
+  (function() {
+    const form = document.getElementById('poll-form');
+    const status = document.getElementById('poll-status');
+    let tries = 0;
+    const maxTries = 60;
+    const interval = parseInt('{{ interval }}', 10) * 1000 || 5000;
+
+    function poll() {
+      tries++;
+      if (tries > maxTries) {
+        status.textContent = 'Timed out. Please refresh and try again.';
+        return;
+      }
+      fetch(form.action, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: new URLSearchParams(new FormData(form)),
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.status === 'ok') {
+          status.textContent = 'Connected! Redirecting…';
+          window.location.href = '/';
+        } else if (data.status === 'pending') {
+          setTimeout(poll, interval);
+        } else {
+          status.textContent = 'Authorization failed. Please refresh and try again.';
+        }
+      })
+      .catch(() => {
+        setTimeout(poll, interval);
+      });
+    }
+    setTimeout(poll, interval);
+  })();
+</script>
+{% endblock %}

@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Playlist Syncer – Connect{% endblock %}
+
+{% block content %}
+<div class="text-center mt-12 mb-10">
+  <h1 class="text-4xl font-extrabold mb-3">Playlist Syncer</h1>
+  <p class="text-gray-400 text-lg max-w-xl mx-auto">
+    Connect your Spotify and YouTube Music accounts, pick a playlist from each,
+    and sync the missing songs in both directions.
+  </p>
+</div>
+
+<div class="grid md:grid-cols-2 gap-6 max-w-2xl mx-auto">
+  <!-- Spotify card -->
+  <div class="rounded-2xl border border-surface2 bg-surface p-6 flex flex-col items-center gap-4">
+    <div class="w-14 h-14 rounded-full bg-spotify/20 flex items-center justify-center">
+      <svg class="w-8 h-8 text-spotify" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.6 0 12 0zm5.521 17.34a.75.75 0 01-1.031.257c-2.826-1.728-6.383-2.12-10.574-1.162a.75.75 0 01-.33-1.463c4.587-1.048 8.525-.597 11.678 1.337a.75.75 0 01.257 1.031zm1.472-3.267a.936.936 0 01-1.287.308c-3.236-1.99-8.172-2.566-11.998-1.404a.936.936 0 01-.543-1.793c4.372-1.327 9.807-.683 13.52 1.602a.936.936 0 01.308 1.287zm.127-3.403C15.693 8.547 9.116 8.333 5.312 9.488a1.122 1.122 0 01-.65-2.148c4.37-1.325 11.628-1.07 16.215 1.56a1.122 1.122 0 01-1.757 1.761z"/>
+      </svg>
+    </div>
+    <h2 class="text-lg font-semibold">Spotify</h2>
+    {% if spotify_connected %}
+      <span class="inline-flex items-center gap-1.5 text-spotify text-sm font-medium">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+        Connected
+      </span>
+      <a href="/logout/spotify" class="text-xs text-gray-500 hover:text-gray-300">Disconnect</a>
+    {% else %}
+      <a href="/login/spotify"
+         class="inline-block rounded-full bg-spotify px-6 py-2.5 text-sm font-semibold text-black hover:bg-spotify/90 transition">
+        Connect Spotify
+      </a>
+    {% endif %}
+  </div>
+
+  <!-- YouTube Music card -->
+  <div class="rounded-2xl border border-surface2 bg-surface p-6 flex flex-col items-center gap-4">
+    <div class="w-14 h-14 rounded-full bg-youtube/20 flex items-center justify-center">
+      <svg class="w-8 h-8 text-youtube" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M23.498 6.186a3.016 3.016 0 00-2.122-2.136C19.505 3.546 12 3.546 12 3.546s-7.505 0-9.377.504A3.017 3.017 0 00.502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 002.122 2.136c1.871.504 9.376.504 9.376.504s7.505 0 9.377-.504a3.015 3.015 0 002.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+      </svg>
+    </div>
+    <h2 class="text-lg font-semibold">YouTube Music</h2>
+    {% if youtube_connected %}
+      <span class="inline-flex items-center gap-1.5 text-youtube text-sm font-medium">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+        Connected
+      </span>
+      <a href="/logout/youtube" class="text-xs text-gray-500 hover:text-gray-300">Disconnect</a>
+    {% else %}
+      <a href="/login/youtube"
+         class="inline-block rounded-full bg-youtube px-6 py-2.5 text-sm font-semibold text-white hover:bg-youtube/90 transition">
+        Connect YouTube Music
+      </a>
+    {% endif %}
+  </div>
+</div>
+
+{% if spotify_connected and youtube_connected %}
+<div class="text-center mt-10">
+  <a href="/select"
+     class="inline-block rounded-full bg-gradient-to-r from-spotify to-youtube px-8 py-3 text-lg font-bold text-white shadow-lg hover:opacity-90 transition">
+    Select Playlists &rarr;
+  </a>
+</div>
+{% endif %}
+{% endblock %}

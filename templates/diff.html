@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block title %}Sync Preview{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-bold mb-2 text-center">Sync Preview</h1>
+<p class="text-gray-400 text-center mb-8">
+  Review the differences. Check the songs you'd like to sync, then hit the button below.
+</p>
+
+<form method="POST" action="/sync" id="sync-form">
+  <input type="hidden" name="spotify_playlist" value="{{ spotify_playlist }}" />
+  <input type="hidden" name="youtube_playlist" value="{{ youtube_playlist }}" />
+
+  {% if diff.matched %}
+  <section class="mb-10">
+    <h2 class="text-lg font-semibold mb-3 flex items-center gap-2">
+      <svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+      Already in both ({{ diff.matched|length }})
+    </h2>
+    <div class="grid gap-2 max-h-64 overflow-y-auto pr-2 custom-scroll">
+      {% for m in diff.matched %}
+      <div class="flex items-center gap-3 rounded-lg bg-surface/60 border border-surface2 px-3 py-2 text-sm opacity-70">
+        {% if m.source_track.image %}
+        <img src="{{ m.source_track.image }}" class="w-9 h-9 rounded object-cover flex-shrink-0" />
+        {% endif %}
+        <div class="min-w-0">
+          <p class="truncate font-medium">{{ m.source_track.name }}</p>
+          <p class="text-xs text-gray-500 truncate">{{ m.source_track.artists | join(', ') }}</p>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  <!-- Songs only in Spotify → add to YouTube Music -->
+  <section class="mb-10">
+    <h2 class="text-lg font-semibold flex items-center gap-2 mb-3">
+      <span class="w-3 h-3 rounded-full bg-spotify inline-block"></span>
+      Only in Spotify &rarr; add to YouTube Music ({{ diff.only_in_spotify|length }})
+    </h2>
+    {% if diff.only_in_spotify %}
+    <label class="text-xs text-gray-400 flex items-center gap-1 cursor-pointer mb-2">
+      <input type="checkbox" checked class="accent-spotify select-all-toggle" data-group="sp2yt" /> Select all
+    </label>
+    <div class="grid gap-2 max-h-96 overflow-y-auto pr-2 custom-scroll">
+      {% for m in diff.only_in_spotify %}
+      <label class="flex items-center gap-3 rounded-lg border px-3 py-2 text-sm cursor-pointer transition
+        {% if m.status == 'matched' %}border-surface2 bg-surface hover:border-spotify/40{% else %}border-yellow-800/40 bg-yellow-900/10{% endif %}">
+        {% if m.status == 'matched' %}
+        <input type="checkbox" name="sp2yt" value="{{ m.target_track.id }}" checked class="accent-spotify group-sp2yt" />
+        {% else %}
+        <input type="checkbox" disabled class="opacity-30" />
+        {% endif %}
+        {% if m.source_track.image %}
+        <img src="{{ m.source_track.image }}" class="w-9 h-9 rounded object-cover flex-shrink-0" />
+        {% endif %}
+        <div class="min-w-0 flex-1">
+          <p class="truncate font-medium">{{ m.source_track.name }}</p>
+          <p class="text-xs text-gray-500 truncate">{{ m.source_track.artists | join(', ') }}</p>
+        </div>
+        {% if m.status == 'matched' %}
+        <span class="text-xs text-spotify whitespace-nowrap">match found</span>
+        {% else %}
+        <span class="text-xs text-yellow-500 whitespace-nowrap">no match</span>
+        {% endif %}
+      </label>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-sm text-gray-500 py-4">All Spotify songs are already in the YouTube Music playlist.</p>
+    {% endif %}
+  </section>
+
+  <!-- Songs only in YouTube Music → add to Spotify -->
+  <section class="mb-10">
+    <h2 class="text-lg font-semibold flex items-center gap-2 mb-3">
+      <span class="w-3 h-3 rounded-full bg-youtube inline-block"></span>
+      Only in YouTube Music &rarr; add to Spotify ({{ diff.only_in_youtube|length }})
+    </h2>
+    {% if diff.only_in_youtube %}
+    <label class="text-xs text-gray-400 flex items-center gap-1 cursor-pointer mb-2">
+      <input type="checkbox" checked class="accent-red-500 select-all-toggle" data-group="yt2sp" /> Select all
+    </label>
+    <div class="grid gap-2 max-h-96 overflow-y-auto pr-2 custom-scroll">
+      {% for m in diff.only_in_youtube %}
+      <label class="flex items-center gap-3 rounded-lg border px-3 py-2 text-sm cursor-pointer transition
+        {% if m.status == 'matched' %}border-surface2 bg-surface hover:border-youtube/40{% else %}border-yellow-800/40 bg-yellow-900/10{% endif %}">
+        {% if m.status == 'matched' %}
+        <input type="checkbox" name="yt2sp" value="{{ m.target_track.id }}" checked class="accent-red-500 group-yt2sp" />
+        {% else %}
+        <input type="checkbox" disabled class="opacity-30" />
+        {% endif %}
+        {% if m.source_track.image %}
+        <img src="{{ m.source_track.image }}" class="w-9 h-9 rounded object-cover flex-shrink-0" />
+        {% endif %}
+        <div class="min-w-0 flex-1">
+          <p class="truncate font-medium">{{ m.source_track.name }}</p>
+          <p class="text-xs text-gray-500 truncate">{{ m.source_track.artists | join(', ') }}</p>
+        </div>
+        {% if m.status == 'matched' %}
+        <span class="text-xs text-youtube whitespace-nowrap">match found</span>
+        {% else %}
+        <span class="text-xs text-yellow-500 whitespace-nowrap">no match</span>
+        {% endif %}
+      </label>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-sm text-gray-500 py-4">All YouTube Music songs are already in the Spotify playlist.</p>
+    {% endif %}
+  </section>
+
+  {% if not diff.only_in_spotify and not diff.only_in_youtube %}
+  <div class="text-center py-12 text-gray-500">
+    <p class="text-lg font-medium">These playlists are already in sync!</p>
+    <a href="/select" class="mt-4 inline-block text-sm text-blue-400 hover:underline">&larr; Pick different playlists</a>
+  </div>
+  {% else %}
+  <div class="text-center mt-4 mb-8">
+    <button type="submit"
+            class="rounded-full bg-gradient-to-r from-spotify to-youtube px-8 py-3 text-lg font-bold text-white shadow-lg hover:opacity-90 transition">
+      Sync Selected Songs
+    </button>
+  </div>
+  {% endif %}
+</form>
+
+<div id="sync-loading" class="fixed inset-0 z-50 hidden items-center justify-center bg-dark/90 backdrop-blur-sm">
+  <div class="text-center">
+    <div class="inline-block h-12 w-12 animate-spin rounded-full border-4 border-spotify border-t-transparent mb-4"></div>
+    <p class="text-lg font-medium text-gray-200">Syncing playlists…</p>
+    <p class="text-sm text-gray-500 mt-1">Adding songs to both platforms.</p>
+  </div>
+</div>
+
+<script>
+  var syncForm = document.getElementById('sync-form');
+  if (syncForm) {
+    syncForm.addEventListener('submit', function() {
+      var overlay = document.getElementById('sync-loading');
+      overlay.classList.remove('hidden');
+      overlay.classList.add('flex');
+    });
+  }
+</script>
+{% endblock %}

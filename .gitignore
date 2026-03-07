@@ -1,0 +1,8 @@
+.venv/
+__pycache__/
+*.pyc
+.sessions/
+ytmusic_browser.json
+ytmusic_tokens/
+.env
+*.egg-info/

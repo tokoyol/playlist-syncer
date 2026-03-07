@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}Playlist Syncer{% endblock %}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            spotify:  '#1DB954',
+            youtube:  '#FF0000',
+            dark:     '#121212',
+            surface:  '#1E1E1E',
+            surface2: '#2A2A2A',
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="h-full bg-dark text-gray-100 antialiased">
+  <nav class="border-b border-surface2 bg-surface px-6 py-4 flex items-center justify-between">
+    <a href="/" class="text-xl font-bold tracking-tight">
+      <span class="text-spotify">Spotify</span>
+      <span class="text-gray-400 mx-1">&harr;</span>
+      <span class="text-youtube">YouTube Music</span>
+      <span class="ml-2 text-gray-300">Syncer</span>
+    </a>
+    <div class="flex items-center gap-4 text-sm">
+      {% if spotify_connected %}
+        <span class="text-spotify font-medium">Spotify connected</span>
+      {% endif %}
+      {% if youtube_connected %}
+        <span class="text-youtube font-medium">YT Music connected</span>
+      {% endif %}
+    </div>
+  </nav>
+
+  <main class="max-w-5xl mx-auto px-4 py-8">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}
+        <div class="mb-4 rounded-lg px-4 py-3 text-sm
+          {% if cat == 'error' %}bg-red-900/40 text-red-300 border border-red-800
+          {% elif cat == 'success' %}bg-green-900/40 text-green-300 border border-green-800
+          {% else %}bg-blue-900/40 text-blue-300 border border-blue-800{% endif %}">
+          {{ msg }}
+        </div>
+      {% endfor %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </main>
+
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

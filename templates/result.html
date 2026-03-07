@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Sync Complete{% endblock %}
+
+{% block content %}
+<div class="max-w-lg mx-auto mt-12 text-center">
+  <div class="w-16 h-16 rounded-full bg-green-900/40 flex items-center justify-center mx-auto mb-4">
+    <svg class="w-9 h-9 text-green-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+    </svg>
+  </div>
+  <h1 class="text-2xl font-bold mb-2">Sync Complete</h1>
+  <p class="text-gray-400 mb-8">Here's what happened:</p>
+
+  <div class="grid grid-cols-2 gap-4 mb-8">
+    <div class="rounded-xl border border-surface2 bg-surface p-5">
+      <p class="text-3xl font-bold text-spotify">{{ added_to_youtube }}</p>
+      <p class="text-sm text-gray-400 mt-1">songs added to<br/>YouTube Music</p>
+    </div>
+    <div class="rounded-xl border border-surface2 bg-surface p-5">
+      <p class="text-3xl font-bold text-youtube">{{ added_to_spotify }}</p>
+      <p class="text-sm text-gray-400 mt-1">songs added to<br/>Spotify</p>
+    </div>
+  </div>
+
+  {% if errors %}
+  <div class="rounded-lg bg-red-900/30 border border-red-800 p-4 mb-8 text-left text-sm text-red-300">
+    <p class="font-semibold mb-1">Some issues occurred:</p>
+    <ul class="list-disc list-inside space-y-0.5">
+      {% for err in errors %}
+      <li>{{ err }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  <div class="flex justify-center gap-4">
+    <a href="/select" class="rounded-full border border-surface2 px-6 py-2.5 text-sm font-medium hover:bg-surface2 transition">
+      Sync more playlists
+    </a>
+    <a href="/" class="rounded-full bg-surface2 px-6 py-2.5 text-sm font-medium hover:bg-surface transition">
+      Home
+    </a>
+  </div>
+</div>
+{% endblock %}
