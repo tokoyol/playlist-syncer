@@ -113,7 +113,18 @@
 
   {% if not diff.only_in_spotify and not diff.only_in_youtube %}
   <div class="text-center py-12 text-gray-500">
+    {% if sp_track_count == 0 and yt_track_count == 0 %}
+    <p class="text-lg font-medium text-yellow-400">Both playlists appear to be empty.</p>
+    <p class="text-sm mt-2">No tracks were found in either playlist. Make sure you selected the right playlists.</p>
+    {% elif sp_track_count == 0 %}
+    <p class="text-lg font-medium text-yellow-400">The Spotify playlist appears to be empty.</p>
+    <p class="text-sm mt-2">No tracks were found. Make sure you selected the right Spotify playlist.</p>
+    {% elif yt_track_count == 0 %}
+    <p class="text-lg font-medium text-yellow-400">The YouTube Music playlist appears to be empty.</p>
+    <p class="text-sm mt-2">No tracks were found in the YouTube Music playlist. Make sure you selected the right playlist.</p>
+    {% else %}
     <p class="text-lg font-medium">These playlists are already in sync!</p>
+    {% endif %}
     <a href="/select" class="mt-4 inline-block text-sm text-blue-400 hover:underline">&larr; Pick different playlists</a>
   </div>
   {% else %}

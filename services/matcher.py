@@ -1,8 +1,7 @@
 """Cross-platform song matching between Spotify and YouTube Music.
 
 Matching strategy (in priority order):
-1. ISRC exact match  (Spotify tracks carry ISRCs)
-2. Name + artist text search on the target platform, scored by
+1. Name + artist text search on the target platform, scored by
    artist-name similarity and duration proximity.
 """
 
@@ -13,13 +12,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from difflib import SequenceMatcher
 from typing import Any, Callable
 
-
-# ---------------------------------------------------------------------------
-# Public API
-# ---------------------------------------------------------------------------
-
 MatchResult = dict[str, Any]
-# Keys: source_track, target_track (or None), status ("matched" | "unmatched")
 
 
 def diff_playlists(
@@ -27,66 +20,67 @@ def diff_playlists(
     youtube_tracks: list[dict],
     search_youtube: Callable[[str], list[dict]],
     search_spotify: Callable[[str], list[dict]],
+    on_progress: Callable[[int, int, str], None] | None = None,
 ) -> dict[str, list[MatchResult]]:
-    """Compare two playlists and find missing songs on each side.
+    """Compare two playlists and return matched / only_in_spotify / only_in_youtube."""
 
-    Returns dict with keys:
-        matched           – songs found on both sides
-        only_in_spotify   – songs to add to YouTube Music (with best match or None)
-        only_in_youtube   – songs to add to Spotify (with best match or None)
-    """
     yt_by_norm = _index_by_norm(youtube_tracks)
     sp_by_norm = _index_by_norm(spotify_tracks)
 
     matched: list[MatchResult] = []
     only_in_spotify: list[MatchResult] = []
     only_in_youtube: list[MatchResult] = []
-
     matched_yt_norms: set[str] = set()
 
-    # --- Spotify tracks not in YouTube ---
-    sp_to_search: list[tuple[dict, str, str | None]] = []
+    # ----- bucket Spotify tracks -----
+    sp_direct: list[dict] = []
+    sp_to_search: list[dict] = []
     for sp_track in spotify_tracks:
         norm = _norm_key(sp_track)
         if norm in yt_by_norm:
-            matched.append({
-                "source_track": sp_track,
-                "target_track": yt_by_norm[norm],
-                "status": "matched",
-            })
+            matched.append({"source_track": sp_track, "target_track": yt_by_norm[norm], "status": "matched"})
             matched_yt_norms.add(norm)
+            sp_direct.append(sp_track)
         else:
-            query = _build_query(sp_track)
-            isrc = sp_track.get("isrc")
-            sp_to_search.append((sp_track, query, isrc))
+            sp_to_search.append(sp_track)
 
-    # Dedupe: one search per unique (norm, isrc)
-    sp_search_keys: dict[tuple[str, str | None], list[dict]] = {}
-    for sp_track, query, isrc in sp_to_search:
+    # Dedupe searches by normalised key
+    sp_keys: dict[str, dict] = {_norm_key(t): t for t in sp_to_search}
+
+    # ----- bucket YouTube tracks -----
+    yt_to_search: list[dict] = []
+    for yt_track in youtube_tracks:
+        norm = _norm_key(yt_track)
+        if norm not in matched_yt_norms and norm not in sp_by_norm:
+            yt_to_search.append(yt_track)
+    yt_keys: dict[str, dict] = {_norm_key(t): t for t in yt_to_search}
+
+    total = max(len(sp_keys) + len(yt_keys), 1)
+    completed = [0]
+
+    def _report(phase: str) -> None:
+        if on_progress:
+            on_progress(completed[0], total, phase)
+
+    # ----- search YouTube for Spotify-only tracks -----
+    sp_results: dict[str, dict | None] = {}
+
+    def _search_yt(norm: str) -> tuple[str, dict | None]:
+        sp_track = sp_keys[norm]
+        candidates = search_youtube(_build_query(sp_track))
+        return norm, _best_match(sp_track, candidates)
+
+    with ThreadPoolExecutor(max_workers=8) as ex:
+        futures = {ex.submit(_search_yt, k): k for k in sp_keys}
+        for fut in as_completed(futures):
+            norm, target = fut.result()
+            sp_results[norm] = target
+            completed[0] += 1
+            _report("Searching YouTube Music")
+
+    for sp_track in sp_to_search:
         norm = _norm_key(sp_track)
-        key = (norm, isrc)
-        sp_search_keys.setdefault(key, []).append(sp_track)
-
-    def _search_yt(key: tuple[str, str | None]) -> tuple[tuple[str, str | None], dict | None]:
-        tracks = sp_search_keys[key]
-        sp_track = tracks[0]
-        target = None
-        if sp_track.get("isrc"):
-            target = _best_match(sp_track, search_youtube(sp_track["isrc"]))
-        if target is None:
-            target = _best_match(sp_track, search_youtube(_build_query(sp_track)))
-        return key, target
-
-    with ThreadPoolExecutor(max_workers=3) as ex:
-        sp_futures = {ex.submit(_search_yt, k): k for k in sp_search_keys}
-        sp_results: dict[tuple[str, str | None], dict | None] = {}
-        for fut in as_completed(sp_futures):
-            key, target = fut.result()
-            sp_results[key] = target
-
-    for sp_track, query, isrc in sp_to_search:
-        key = (_norm_key(sp_track), isrc)
-        target = sp_results.get(key)
+        target = sp_results.get(norm)
         if target is not None:
             yt_norm = _norm_key(target)
             if yt_norm in yt_by_norm:
@@ -97,32 +91,23 @@ def diff_playlists(
             "status": "matched" if target else "unmatched",
         })
 
-    # --- YouTube tracks not in Spotify ---
-    yt_to_search: list[tuple[dict, str]] = []
-    for yt_track in youtube_tracks:
-        norm = _norm_key(yt_track)
-        if norm in matched_yt_norms or norm in sp_by_norm:
-            continue
-        yt_to_search.append((yt_track, _build_query(yt_track)))
-
-    yt_search_keys: dict[str, list[dict]] = {}
-    for yt_track, query in yt_to_search:
-        norm = _norm_key(yt_track)
-        yt_search_keys.setdefault(norm, []).append(yt_track)
+    # ----- search Spotify for YouTube-only tracks -----
+    yt_results: dict[str, dict | None] = {}
 
     def _search_sp(norm: str) -> tuple[str, dict | None]:
-        yt_track = yt_search_keys[norm][0]
-        target = _best_match(yt_track, search_spotify(_build_query(yt_track)))
-        return norm, target
+        yt_track = yt_keys[norm]
+        candidates = search_spotify(_build_query(yt_track))
+        return norm, _best_match(yt_track, candidates)
 
-    with ThreadPoolExecutor(max_workers=3) as ex:
-        yt_futures = {ex.submit(_search_sp, k): k for k in yt_search_keys}
-        yt_results: dict[str, dict | None] = {}
-        for fut in as_completed(yt_futures):
+    with ThreadPoolExecutor(max_workers=8) as ex:
+        futures = {ex.submit(_search_sp, k): k for k in yt_keys}
+        for fut in as_completed(futures):
             norm, target = fut.result()
             yt_results[norm] = target
+            completed[0] += 1
+            _report("Searching Spotify")
 
-    for yt_track, query in yt_to_search:
+    for yt_track in yt_to_search:
         norm = _norm_key(yt_track)
         target = yt_results.get(norm)
         only_in_youtube.append({
@@ -131,11 +116,10 @@ def diff_playlists(
             "status": "matched" if target else "unmatched",
         })
 
-    return {
-        "matched": matched,
-        "only_in_spotify": only_in_spotify,
-        "only_in_youtube": only_in_youtube,
-    }
+    if on_progress:
+        on_progress(total, total, "Done")
+
+    return {"matched": matched, "only_in_spotify": only_in_spotify, "only_in_youtube": only_in_youtube}
 
 
 # ---------------------------------------------------------------------------
@@ -150,16 +134,12 @@ def _normalize(text: str) -> str:
 
 
 def _norm_key(track: dict) -> str:
-    """Produce a normalised 'artist - title' key for quick dedup."""
     artists = " ".join(sorted(track.get("artists", [])))
     return _normalize(f"{artists} {track.get('name', '')}")
 
 
 def _index_by_norm(tracks: list[dict]) -> dict[str, dict]:
-    idx: dict[str, dict] = {}
-    for t in tracks:
-        idx[_norm_key(t)] = t
-    return idx
+    return {_norm_key(t): t for t in tracks}
 
 
 def _build_query(track: dict) -> str:
@@ -168,7 +148,6 @@ def _build_query(track: dict) -> str:
 
 
 def _best_match(source: dict, candidates: list[dict]) -> dict | None:
-    """Pick the candidate that best matches *source* by artist + duration."""
     if not candidates:
         return None
 
@@ -180,19 +159,13 @@ def _best_match(source: dict, candidates: list[dict]) -> dict | None:
     for c in candidates:
         c_artists = _normalize(" ".join(c.get("artists", [])))
         c_name = _normalize(c.get("name", ""))
-
         artist_sim = SequenceMatcher(None, src_artists, c_artists).ratio()
         name_sim = SequenceMatcher(None, src_name, c_name).ratio()
-
         dur_diff = abs(src_dur - c.get("duration_ms", 0))
-        dur_score = max(0.0, 1.0 - dur_diff / 30_000)  # 30s window
-
+        dur_score = max(0.0, 1.0 - dur_diff / 30_000)
         score = 0.35 * artist_sim + 0.40 * name_sim + 0.25 * dur_score
         if score > best_score:
             best_score = score
             best = c
 
-    # Require a minimum confidence to avoid false positives
-    if best_score < 0.45:
-        return None
-    return best
+    return best if best_score >= 0.45 else None

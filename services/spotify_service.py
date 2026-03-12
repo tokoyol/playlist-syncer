@@ -37,6 +37,20 @@ def exchange_code(code: str) -> dict:
     return build_oauth().get_access_token(code, as_dict=True)
 
 
+_REQUIRED_SCOPES = {
+    "playlist-read-private",
+    "playlist-read-collaborative",
+    "playlist-modify-public",
+    "playlist-modify-private",
+}
+
+
+def token_has_required_scopes(token_info: dict) -> bool:
+    """Return True if the token was granted all required scopes."""
+    granted = set(token_info.get("scope", "").split())
+    return _REQUIRED_SCOPES.issubset(granted)
+
+
 def refresh_if_needed(token_info: dict) -> dict:
     """Return a (possibly refreshed) token_info dict."""
     if token_info.get("expires_at", 0) - int(time.time()) < 60:
@@ -45,7 +59,12 @@ def refresh_if_needed(token_info: dict) -> dict:
     return token_info
 
 
-def client_from_token(token_info: dict) -> spotipy.Spotify:
+def client_from_token(token_info: dict) -> tuple[spotipy.Spotify, dict]:
+    if not token_has_required_scopes(token_info):
+        raise PermissionError(
+            "Spotify token is missing required permissions. "
+            "Please disconnect and reconnect your Spotify account."
+        )
     token_info = refresh_if_needed(token_info)
     return spotipy.Spotify(auth=token_info["access_token"]), token_info
 
@@ -82,7 +101,6 @@ def get_playlist_tracks(sp: spotipy.Spotify, playlist_id: str) -> list[dict[str,
     tracks: list[dict[str, Any]] = []
     result = sp.playlist_items(
         playlist_id,
-        fields="items(track(id,name,artists(name),album(name,images),duration_ms,external_ids)),next",
         additional_types=["track"],
     )
     while result:

@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}Watch – Auto-Sync Spotify → YouTube Music{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-bold mb-2 text-center">Auto-Sync Spotify → YouTube Music</h1>
+<p class="text-center text-gray-400 text-sm mb-6">
+  Pick a pair of playlists. Any song added to Spotify will automatically appear in YouTube Music
+  the next time <code class="bg-surface2 px-1 rounded">sync_watcher.py</code> polls.
+</p>
+
+{% if watcher_config %}
+<div class="mb-6 rounded-xl border border-green-800/50 bg-green-900/20 p-4 text-sm text-green-200">
+  <p class="font-semibold mb-1">Watch active</p>
+  <p>Spotify playlist: <code class="text-white">{{ watcher_config.spotify_playlist_id }}</code></p>
+  <p>YouTube playlist: <code class="text-white">{{ watcher_config.youtube_playlist_id }}</code></p>
+  <p class="mt-1 text-green-300/70">{{ synced_count }} track(s) already noted (won't be re-added).</p>
+  <p class="mt-2 text-gray-400">To change the watched playlists, submit the form below.</p>
+</div>
+{% endif %}
+
+<form method="POST" action="/watch" class="grid md:grid-cols-2 gap-8">
+
+  <!-- Spotify column -->
+  <div>
+    <h2 class="flex items-center gap-2 text-lg font-semibold mb-4">
+      <span class="w-3 h-3 rounded-full bg-spotify inline-block"></span>
+      Spotify Playlist <span class="text-xs text-gray-500 font-normal">(source)</span>
+    </h2>
+    <div class="space-y-2 max-h-[55vh] overflow-y-auto pr-2 custom-scroll">
+      {% for pl in spotify_playlists %}
+      <label class="flex items-center gap-3 rounded-xl border border-surface2 bg-surface p-3 cursor-pointer hover:border-spotify/50 transition">
+        <input type="radio" name="spotify_playlist" value="{{ pl.id }}" class="accent-spotify" required
+          {% if watcher_config and watcher_config.spotify_playlist_id == pl.id %}checked{% endif %} />
+        {% if pl.image %}
+        <img src="{{ pl.image }}" alt="" class="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
+        {% else %}
+        <div class="w-10 h-10 rounded-lg bg-surface2 flex-shrink-0"></div>
+        {% endif %}
+        <div class="min-w-0">
+          <p class="font-medium truncate">{{ pl.name }}</p>
+          <p class="text-xs text-gray-500">{{ pl.track_count }} tracks &middot; {{ pl.owner }}</p>
+        </div>
+      </label>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- YouTube Music column -->
+  <div>
+    <h2 class="flex items-center gap-2 text-lg font-semibold mb-4">
+      <span class="w-3 h-3 rounded-full bg-youtube inline-block"></span>
+      YouTube Music Playlist <span class="text-xs text-gray-500 font-normal">(destination)</span>
+    </h2>
+    {% if yt_error %}
+    <div class="rounded-xl border border-yellow-800/50 bg-yellow-900/20 p-4 mb-4">
+      <p class="text-sm text-yellow-200 mb-2">Could not load playlists: {{ yt_error }}</p>
+      <p class="text-xs text-gray-400 mb-3">Paste a playlist URL instead:</p>
+      <input type="url" name="youtube_playlist_url" placeholder="https://music.youtube.com/playlist?list=PL…"
+             class="w-full rounded-lg bg-surface border border-surface2 px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-youtube/50 focus:outline-none" />
+    </div>
+    {% else %}
+    <div class="space-y-2 max-h-[55vh] overflow-y-auto pr-2 custom-scroll">
+      {% for pl in youtube_playlists %}
+      <label class="flex items-center gap-3 rounded-xl border border-surface2 bg-surface p-3 cursor-pointer hover:border-youtube/50 transition">
+        <input type="radio" name="youtube_playlist" value="{{ pl.id }}" class="accent-red-500" required
+          {% if watcher_config and watcher_config.youtube_playlist_id == pl.id %}checked{% endif %} />
+        {% if pl.image %}
+        <img src="{{ pl.image }}" alt="" class="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
+        {% else %}
+        <div class="w-10 h-10 rounded-lg bg-surface2 flex-shrink-0"></div>
+        {% endif %}
+        <div class="min-w-0">
+          <p class="font-medium truncate">{{ pl.name }}</p>
+          <p class="text-xs text-gray-500">{{ pl.track_count }} tracks &middot; {{ pl.owner }}</p>
+        </div>
+      </label>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Options + submit -->
+  <div class="md:col-span-2 flex flex-col sm:flex-row items-center gap-4 mt-2">
+    <label class="flex items-center gap-2 text-sm text-gray-300">
+      Poll every
+      <select name="interval"
+              class="bg-surface border border-surface2 rounded-lg px-2 py-1 text-white focus:outline-none focus:border-spotify/50">
+        <option value="60">1 minute</option>
+        <option value="300" selected>5 minutes</option>
+        <option value="600">10 minutes</option>
+        <option value="1800">30 minutes</option>
+        <option value="3600">1 hour</option>
+      </select>
+    </label>
+
+    <button type="submit"
+            class="rounded-full bg-spotify px-8 py-2.5 text-sm font-bold text-white shadow hover:opacity-90 transition">
+      Save Watch Config
+    </button>
+  </div>
+</form>
+
+<!-- Instructions -->
+<div class="mt-10 rounded-xl border border-surface2 bg-surface p-6 text-sm text-gray-300 space-y-3">
+  <p class="font-semibold text-white">How to start syncing</p>
+  <ol class="list-decimal list-inside space-y-2 text-gray-400">
+    <li>Save the config above.</li>
+    <li>Open a terminal in the project folder and run:
+      <pre class="mt-1 bg-surface2 rounded-lg px-4 py-2 text-green-300 font-mono text-xs overflow-x-auto">python sync_watcher.py</pre>
+    </li>
+    <li>Leave it running. Every time you add a song to your Spotify playlist, it will be found on YouTube Music and added automatically.</li>
+  </ol>
+  <p class="text-gray-500 text-xs mt-3">
+    To run it silently in the background on Windows you can use Task Scheduler or
+    <code class="bg-surface2 px-1 rounded">pythonw sync_watcher.py</code>.
+  </p>
+</div>
+{% endblock %}

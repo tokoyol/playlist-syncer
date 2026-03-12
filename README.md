@@ -47,7 +47,40 @@ Sync playlists between Spotify and YouTube Music. Select one playlist from each 
 
 ## Usage
 
+### Manual sync (one-off)
+
 1. Connect both your Spotify and YouTube Music accounts.
 2. Pick a playlist from each platform.
 3. Review the diff showing which songs are missing on each side.
 4. Click **Sync** to add the missing songs.
+
+### Auto-sync (Spotify → YouTube Music)
+
+Automatically mirror new Spotify additions to a YouTube Music playlist in the background.
+
+1. With the web app running, go to <http://127.0.0.1:5000/watch>.
+2. Select the Spotify playlist to watch and the YouTube Music playlist to mirror to.
+3. Choose a poll interval and click **Save Watch Config**.
+   This writes `watcher_config.json` and seeds `watcher_state.json` with existing tracks so nothing already in the playlist gets re-added.
+4. In a terminal (venv active), run the watcher:
+
+   ```bash
+   python sync_watcher.py
+   ```
+
+   Every poll cycle it fetches the Spotify playlist, finds any songs added since the last check, searches YouTube Music for the best match, and adds them.
+
+   To run it silently in the background on Windows:
+
+   ```bash
+   pythonw sync_watcher.py
+   ```
+
+**Files created by the watcher**
+
+| File | Purpose |
+|---|---|
+| `watcher_config.json` | Playlist IDs, Spotify token, poll interval |
+| `watcher_state.json` | Track IDs already synced (prevents duplicates) |
+
+> **Note:** The watcher needs an active internet connection to reach Spotify and YouTube Music. If it fails to refresh the Spotify token, re-visit `/watch` in the web app and re-save the config to write a fresh token.

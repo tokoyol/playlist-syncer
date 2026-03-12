@@ -1,0 +1,13 @@
+{
+  "spotify_playlist_id": "6V2YHUjFbBcdeiivS3EVcK",
+  "youtube_playlist_id": "PLiXnD5oiYdH2J30Xj03ZKvYzBjjsGAyW1",
+  "spotify_token": {
+    "access_token": "BQD8kFWsMv52S7aBcmxCF6RrPy4pdqAeNtCgaBWyZhdh8dmmmYnxhxqIwnqil6L2fWfx-vyz_n7VP3aHmy9DHHB7M8x5bzheRizvBjtgSbDKZC0UipuvpmMqe9qKBswokK0gAmKYJFId9fL1Ud3m0YiOlf2wN9Iz_RdBOausyq3gqKklYFwp198RB-d7cAU4nvTxd6yAmGRk1iB1yDwkupDmc3k0VZ1ADma7nP0Ll5uKMzLtI0mirPxLuiS5RMsg1B04mIT75Q40pTdILe7Y3fzpHTA7yKemhAc0BY3gcd4bP-ImhF0uwzRAHfIC",
+    "token_type": "Bearer",
+    "expires_in": 3600,
+    "scope": "playlist-read-private playlist-read-collaborative playlist-modify-public playlist-modify-private",
+    "expires_at": 1773299166,
+    "refresh_token": "AQCL4Os4wGBkRRUnqYWIZDjm1v-bPBhuLtwF_4S3ZYo4P5JDgVX26AvBkWAawF8ISgLApNxkcgs7wEs4KKRKYTN7O_pMEz3rqqvSGcTQLWleQO6kc8Mv5V1fCrFwjRhcN-E"
+  },
+  "poll_interval_seconds": 3600
+}
